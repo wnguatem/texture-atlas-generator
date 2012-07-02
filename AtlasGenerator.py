@@ -734,6 +734,8 @@ def MakeAtlas(texMode, dirPath, texSize, atlasPath, dirName):
     
     # Pack the textures into an atlas as efficiently as possible.
     packResult = gTexturePacker.PackTextures(True, useBorder)
+    atlasWidth = float(packResult[0])
+    atlasHeight = float(packResult[1])
 
     atlasElement = gDoc.createElement("Atlas")
     atlasElement.setAttribute("name", dirName)
@@ -758,11 +760,10 @@ def MakeAtlas(texMode, dirPath, texSize, atlasPath, dirName):
         
         atlasTest.paste(img, (tex.GetX(), tex.GetY()))
         
-        sizeFloat = float(texSize)
-        imgElement.setAttribute("x", str(tex.GetX()/sizeFloat))
-        imgElement.setAttribute("y", str(tex.GetY()/sizeFloat))
-        imgElement.setAttribute("width", str(tex.GetWidth()/sizeFloat))
-        imgElement.setAttribute("height", str(tex.GetHeight()/sizeFloat))
+        imgElement.setAttribute("x", str(tex.GetX()/atlasWidth))
+        imgElement.setAttribute("y", str(tex.GetY()/atlasHeight))
+        imgElement.setAttribute("width", str(tex.GetWidth()/atlasWidth))
+        imgElement.setAttribute("height", str(tex.GetHeight()/atlasHeight))
         imgElement.setAttribute("flipped", str(tex.IsFlipped()))
         
         atlasElement.appendChild(imgElement)
