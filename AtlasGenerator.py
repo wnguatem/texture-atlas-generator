@@ -57,17 +57,6 @@ def IsPowerOfTwo(number=0):
 # ###################################################
 #
 # ###################################################
-def SortImages(imageList=[]):
-    if (len(imageList) == 0):
-        return (imageList)
-    
-    imageList.sort(key=lambda img: img[0].size[0]*img[0].size[1])
-    return (imageList)
-
-
-# ###################################################
-#
-# ###################################################
 class Rect:
     def __init__(self):
         self.mX1 = 0
@@ -370,7 +359,6 @@ class TexturePacker:
            
         return (False)
 
-    # SUSPECT algorithm - debug this...
     def MergeNodes(self):
         for f in self.mFreeArr:
            fIdx = 0
@@ -615,95 +603,9 @@ gTexturePacker=TexturePacker()
 # ###################################################
 #
 # ###################################################
-def MakeAtlasOriginal(texMode, dirPath, texSize, atlasPath, dirName):
+def MakeAtlas(texMode, dirPath, atlasPath, dirName):
     # 4 xml file to be read in at runtime which holds the texture coordinates, etc. in the atlas for each image stored in the atlas.
-    print texMode, dirPath, texSize, atlasPath
-    
-    borderSize=gCommandArgs['border_size']
-    
-    atlasElement = gDoc.createElement("Atlas")
-    atlasElement.setAttribute("name", dirName)
-    atlasElement.setAttribute("width", str(texSize))
-    atlasElement.setAttribute("height", str(texSize))
-    atlasElement.setAttribute("mode", texMode)
-    atlasElement.setAttribute("border", str(borderSize))
-    atlasElement.setAttribute("type", gCommandArgs['atlas_type'])
-    
-    childDirs = os.listdir(dirPath)
-    
-    imagesPathList = []
-    imagesList = []
-    
-    currX = borderSize
-    currY = borderSize
-    maxHeightInRow=0
-    atlasTest=Image.new(texMode, (texSize, texSize), (128, 128, 128))
-    
-    for currPath in childDirs:
-        print "Doing ", currPath, os.path.isdir(currPath)
-        
-        imgElement = gDoc.createElement("image")
-        imgElement.setAttribute("imagefile", currPath)
-        
-        if (currPath.startswith(".") or os.path.isdir(os.path.join(dirPath, currPath))):
-            continue
-        
-        try:
-            imagesPathList.append(dirPath + "/" + currPath)
-            img = Image.open(imagesPathList[len(imagesPathList)-1])
-            imagesList.append([img, imgElement])
-        except (IOError):
-            print "ERROR: PIL failed to open file", dirPath + currPath
-    
-    SortImages(imagesList)
-    
-    for tmp in imagesList:
-        img = tmp[0]
-        imgElement = tmp[1]
-        
-        atlasTest.paste(img, (currX, currY))
-        
-        sizeFloat = float(texSize)
-        imgElement.setAttribute("x", str(currX/sizeFloat))
-        imgElement.setAttribute("y", str(currY/sizeFloat))
-        imgElement.setAttribute("width", str(img.size[0]/sizeFloat))
-        imgElement.setAttribute("height", str(img.size[1]/sizeFloat))
-        
-        currX += img.size[0] + borderSize
-        if (currX + img.size[0] + borderSize > texSize):
-            currX = borderSize
-            currY += maxHeightInRow + borderSize
-        if (currY > texSize): 
-            currY = borderSize
-        elif (maxHeightInRow < img.size[1] + borderSize):
-            maxHeightInRow = img.size[1] + borderSize
-        print currX, ",", currY
-        
-        atlasElement.appendChild(imgElement)
-    
-    #        #print imagesList
-    #        print imagesPathList
-    #        
-    #        if (os.path.exists(resPath + "/" + "test1." + gCommandArgs['atlas_type'])):
-    #        print "removing file"
-    #        os.remove(resPath + "/" + "test1." + gCommandArgs['atlas_type'])
-    
-    atlasTest.save(atlasPath + "/" + os.path.basename(dirPath) + "." + gCommandArgs['atlas_type'], gCommandArgs['atlas_type'])
-    if (gCommandArgs['verbose']):
-        atlasTest.show()
-    
-    gRootElement.appendChild(atlasElement)
-
-
-# ###################################################
-#
-# ###################################################
-def MakeAtlas(texMode, dirPath, texSize, atlasPath, dirName):
-    # 4 xml file to be read in at runtime which holds the texture coordinates, etc. in the atlas for each image stored in the atlas.
-    print texMode, dirPath, texSize, atlasPath
-    
-    borderSize=gCommandArgs['border_size']
-    useBorder = True if (borderSize > 0) else False
+    print texMode, dirPath, atlasPath
     
     childDirs = os.listdir(dirPath)
     
@@ -733,9 +635,10 @@ def MakeAtlas(texMode, dirPath, texSize, atlasPath, dirName):
             print "ERROR: PIL failed to open file", dirPath + currPath
     
     # Pack the textures into an atlas as efficiently as possible.
-    packResult = gTexturePacker.PackTextures(True, useBorder)
+    packResult = gTexturePacker.PackTextures(True, True)
     atlasWidth = float(packResult[0])
     atlasHeight = float(packResult[1])
+    borderSize = 1
 
     atlasElement = gDoc.createElement("Atlas")
     atlasElement.setAttribute("name", dirName)
@@ -760,10 +663,10 @@ def MakeAtlas(texMode, dirPath, texSize, atlasPath, dirName):
         
         atlasTest.paste(img, (tex.GetX(), tex.GetY()))
         
-        imgElement.setAttribute("x", str(tex.GetX()/atlasWidth))
-        imgElement.setAttribute("y", str(tex.GetY()/atlasHeight))
-        imgElement.setAttribute("width", str(tex.GetWidth()/atlasWidth))
-        imgElement.setAttribute("height", str(tex.GetHeight()/atlasHeight))
+        imgElement.setAttribute("x", str(tex.GetX()))
+        imgElement.setAttribute("y", str(tex.GetY()))
+        imgElement.setAttribute("width", str(tex.GetWidth()))
+        imgElement.setAttribute("height", str(tex.GetHeight()))
         imgElement.setAttribute("flipped", str(tex.IsFlipped()))
         
         atlasElement.appendChild(imgElement)
@@ -786,8 +689,8 @@ def MakeAtlas(texMode, dirPath, texSize, atlasPath, dirName):
 # ###################################################
 #
 # ###################################################
-def GenerateAtlases(texMode, atlasPath, resPath, texSize):
-    print texMode, atlasPath, resPath, texSize
+def GenerateAtlases(texMode, atlasPath, resPath):
+    print texMode, atlasPath, resPath
     
     childDirs = os.listdir(resPath)
     
@@ -797,7 +700,7 @@ def GenerateAtlases(texMode, atlasPath, resPath, texSize):
             continue
         if (os.path.isdir(os.path.join(resPath, currPath))):
             gTexturePacker.Reset()
-            MakeAtlas(texMode, resPath + "/" + currPath, texSize, atlasPath, currPath)
+            MakeAtlas(texMode, resPath + "/" + currPath, atlasPath, currPath)
 
 
 # ###################################################
@@ -811,11 +714,8 @@ def ParseCommandLineArgs():
 
     gParser.add_argument('-v', '--verbose', action='store_true');
     gParser.add_argument('-r', '--res-path', action='store', required=True, help='The location of the games resources.')
-    gParser.add_argument('-s', '--atlas-size', action='store', required=False, type=int, default=512, help='The size of the texture atlases')
     gParser.add_argument('-t', '--atlas-type', action='store', required=False, default='TGA', help='The file type of the texture atlases')
     gParser.add_argument('-m', '--atlas-mode', action='store', required=False, default='RGBA', help='The bit mode of the texture atlases (RGBA, RGB)')
-    gParser.add_argument('-f', '--force-not-power-of-two', action='store_true', help='Should we unforce the generated atlases to be power of two textures?')
-    gParser.add_argument('-b', '--border-size', action='store', required=False, type=int, default=1, help='The number of pixels bordering each image in the atlas')
     
     gCommandArgs=vars(gParser.parse_args())
 
@@ -845,18 +745,13 @@ def Main():
         gParser.print_help()
         return (1)
 
-    if (not gCommandArgs['force_not_power_of_two'] and not IsPowerOfTwo(gCommandArgs['atlas_size'])):
-        print gCommandArgs['atlas_size'], "is not a power of two"
-        gParser.print_help()
-        return (1)
-
     atlasesPath=gCommandArgs['res_path'] + "/" + "atlases/"
 
     if(os.path.isdir(atlasesPath)):
         shutil.rmtree(atlasesPath)
     os.mkdir(atlasesPath)
 
-    res=GenerateAtlases(gCommandArgs['atlas_mode'], atlasesPath, gCommandArgs['res_path'] + "/" + gImagesDir, gCommandArgs['atlas_size'])
+    res=GenerateAtlases(gCommandArgs['atlas_mode'], atlasesPath, gCommandArgs['res_path'] + "/" + gImagesDir)
 
     file_object = open(atlasesPath + "atlasDictionary.xml", "w")
     gDoc.writexml(file_object, indent="\n", addindent="    ")
